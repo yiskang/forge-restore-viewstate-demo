@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Very Basic 3D Viewer</title>
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=no" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> 
+    <meta charset="utf-8">
+
+    <!-- The Viewer CSS -->
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
+    <link href="src/css/index.css" rel="stylesheet" />
+    <link href="src/css/adn.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div id="viewer"></div>
+    
+    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+    <script src="src//js/AdnViewpointPanel.js"></script>
+
+    <!-- Developer JS -->
+    <script>
+        const options = {
+            env: 'AutodeskProduction',
+            getAccessToken: getForgeToken
+        };
+        const documentId = 'urn:dXJuOmFkc2sub2JqZWN0czpvcy5vYmplY3Q6Zm9yZ2UtbmF2aWdhdGlvbi1sa3dlajd4cGJncDYzeDRobDMzNXk2bTI2b2FrZ2dvZi9yYWNfYmFzaWNfc2FtcGxlX3Byb2plY3QucnZ0';
+        Autodesk.Viewing.Initializer(options, function() {
+          Autodesk.Viewing.Document.load(documentId, onDocumentLoadSuccess, onDocumentLoadFailure);
+        });
+          
+        function onDocumentLoadSuccess(doc) {
+          const filter = {
+            type:'geometry',
+            role: '3d'
+          };
+
+          const rootItem = doc.getRoot();
+          const viewables = rootItem.search(filter);
+
+          if(viewables.length === 0) {
+              console.error('Document contains no viewables.');
+              return;
+          }
+
+          const config3d = {
+            extensions: [
+              'Autodesk.ADN.ViewpointPanelButton'
+            ]
+          };
+
+          const container = document.getElementById( 'viewer' );
+          const viewer = new Autodesk.Viewing.GuiViewer3D( container, config3d );
+          const initialViewable = viewables[0];
+
+          viewer.startWithDocumentNode( doc, initialViewable )
+            .then( onLoadModelSuccess )
+            .catch( onLoadModelError );
+        }
+
+        function onDocumentLoadFailure(viewerErrorCode) {
+          console.error('onDocumentLoadFailure() - errorCode:' + viewerErrorCode);
+        }
+
+        function onLoadModelSuccess(model) {
+          console.log( 'onLoadModelSuccess()!' );
+          console.log( 'Validate model loaded: ' + ( viewer.model === model ) );
+          console.log( model );
+        }
+
+        function onLoadModelError( viewerErrorCode ) {
+            console.error( 'onLoadModelError() - errorCode:' + viewerErrorCode);
+        }
+
+        function getForgeToken( callback ) {
+          fetch(
+            '/api/forge/oauth/token', {
+            method: 'get',
+            headers: new Headers({
+              'Content-Type': 'application/json'
+            })
+          })
+            .then( ( response ) => {
+              if( response.status === 200 ) {
+                return response.json();
+              } else {
+                return Promise.reject(  new Error( `Failed to fetch token from server (status: ${response.status}, message: ${response.statusText})` ) );
+              }
+            })
+            .then( ( data ) => {
+              if( !data ) return Promise.reject( new Error( 'Empty token response' ) );
+
+              callback( data.access_token, data.expires_in );
+            })
+            .catch( ( error ) => console.error( error ) );
+          }
+    </script>
+  </body>
+</html>
+
